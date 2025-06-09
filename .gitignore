@@ -6,3 +6,8 @@ src/model/Untitled*.ipynb
 
 # Archivos auxiliares de Windows (metadatos)
 *.Zone.Identifier
+
+# Ignorar pycache
+__pycache__/
+src/model/__pycache__/
+
