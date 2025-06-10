@@ -9,7 +9,45 @@ verb_suffix = ["ate", "ify", "ise", "ize"]
 adj_suffix = ["able", "ese", "ful", "i", "ian", "ible", "ic", "ish", "ive", "less", "ly", "ous"]
 adv_suffix = ["ward", "wards", "wise"]
 
-def assign_unk(tok):
+espanish_noun_suffix = ["ción", "sión", "dad", "tud", "ez", "eza", "aje", "al", "or", "ista", "ero", "ía", "ismo", "ezno", "umbre"]
+espanish_verb_suffix = ["ar", "er", "ir", "ecer", "izar", "ificar"]
+espanish_adj_suffix = ["able", "ible", "oso", "al", "ico", "il", "ar", "ente", "ivo", "ario", "az", "ón"]
+espanish_adv_suffix = ["mente"]
+
+def assign_unk_espanish(tok):
+    """
+    Assign unknown word tokens
+    """
+    # Digits
+    if any(char.isdigit() for char in tok):
+        return "--unk_digit--"
+
+    # Punctuation
+    elif any(char in punct for char in tok):
+        return "--unk_punct--"
+
+    # Upper-case
+    elif any(char.isupper() for char in tok):
+        return "--unk_upper--"
+
+    # Nouns
+    elif any(tok.endswith(suffix) for suffix in espanish_noun_suffix):
+        return "--unk_noun--"
+
+    # Verbs
+    elif any(tok.endswith(suffix) for suffix in espanish_verb_suffix):
+        return "--unk_verb--"
+
+    # Adjectives
+    elif any(tok.endswith(suffix) for suffix in espanish_adj_suffix):
+        return "--unk_adj--"
+
+    # Adverbs
+    elif any(tok.endswith(suffix) for suffix in espanish_adv_suffix):
+        return "--unk_adv--"
+    return "--unk--"
+
+def assign_unk_english(tok):
     """
     Assign unknown word tokens
     """
@@ -65,7 +103,7 @@ def load_data(path, is_corpus):
             file = [line for line in f.readlines()]
             return file
 
-def get_word_tag(line, vocab): 
+def get_word_tag(line, vocab, english): 
     if not line.split():
         word = "--n--"
         tag = "--s--"
@@ -74,6 +112,9 @@ def get_word_tag(line, vocab):
         word, tag = line.split()
         if word not in vocab: 
             # Handle unknown words
-            word = assign_unk(word)
+            if(english):
+                word = assign_unk_english(word)
+            else:
+                word = assign_unk_espanish(word)
         return word, tag
     return None 

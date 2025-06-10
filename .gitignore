@@ -2,7 +2,6 @@
 **/.ipynb_checkpoints/
 
 # Ignorar notebooks específicos
-src/model/Untitled*.ipynb
 
 # Archivos auxiliares de Windows (metadatos)
 *.Zone.Identifier
