@@ -3,7 +3,7 @@ import string
 import numpy as np
 import math
 from collections import defaultdict
-from utils import get_word_tag 
+from utils import load_data, assign_unk_english, get_word_tag
 
 class ViterbiTagger:
     '''
@@ -11,14 +11,22 @@ class ViterbiTagger:
     Existing docstrings have been preserved verbatim. Any new comments are in English.
     '''
 
-    def __init__(self, alpha: float = 0.001):
+    def __init__(self, vocab, alpha: float = 0.001):
         '''
         Initializes the tagger with a smoothing factor.
 
         Input:
             alpha: smoothing factor for add‑alpha smoothing in probability matrices
         '''
+        self.vocab = vocab
         self.alpha = alpha
+        self.emission_counts = None
+        self.transition_counts = None 
+        self.tag_counts = None
+        self.states = None
+        self.A = None
+        self.best_probs = None
+        self.best_paths = None
 
     def create_dictionaries(self, training_corpus, vocab, verbose=True):
         """
@@ -39,215 +47,172 @@ class ViterbiTagger:
             i += 1
             if i % 50000 == 0 and verbose:
                 print(f"word count = {i}")
-            word, tag = get_word_tag(word_tag, vocab)
+            word, tag = get_word_tag(word_tag, vocab, True)
             transition_counts[(prev_tag, tag)] += 1
             emission_counts[(tag, word)] += 1
             tag_counts[tag] += 1
             prev_tag = tag
-    
         self.emission_counts = emission_counts
-        self.transition_counts = transition_counts
+        self.transition_counts = transition_counts 
         self.tag_counts = tag_counts
+        self.states = sorted(tag_counts.keys())
     
-    @staticmethod
-    def create_transition_matrix(alpha, tag_counts, transition_counts):
-        ''' 
-        Creates the transition probability matrix A using add-alpha smoothing.
-
+    def predict_pos(self, prep, y):
+        '''
         Input: 
-            alpha: smoothing factor
-            tag_counts: dict mapping each tag to its count
-            transition_counts: dict with (prev_tag, tag) tuples as keys and their counts as values
-        Output:
-            A: transition probability matrix (num_tags x num_tags)
-        '''
-        all_tags = sorted(tag_counts.keys())
-        num_tags = len(all_tags)
-        A = np.zeros((num_tags, num_tags))
-        trans_keys = set(transition_counts.keys())
-
-        for i in range(num_tags):
-            for j in range(num_tags):
-                count = 0
-                key = (all_tags[i], all_tags[j])
-                if key in trans_keys:
-                    count = transition_counts[key]
-                count_prev_tag = tag_counts[key[0]]
-                A[i, j] = (count + alpha) / (count_prev_tag + (alpha * num_tags))
-
-        return A
-
-    @staticmethod
-    def create_emission_matrix(alpha, tag_counts, emission_counts, vocab):
-        '''
-        Creates the emission probability matrix B using add-alpha smoothing.
-
-        Input: 
-            alpha: smoothing factor
-            tag_counts: dict mapping each tag to its count
-            emission_counts: dict with (tag, word) tuples as keys and their counts as values
-            vocab: dict mapping word -> index
-        Output:
-            B: emission probability matrix (num_tags x vocab_size)
-        '''
-        num_tags = len(tag_counts)
-        all_tags = sorted(tag_counts.keys())
-        num_words = len(vocab)
-        B = np.zeros((num_tags, num_words))
-        emis_keys = set(emission_counts.keys())
-
-        for i in range(num_tags):
-            for j in range(num_words):
-                count = 0 
-                key = (all_tags[i], vocab[j])
-                if key in emis_keys:
-                    count = emission_counts[key]
-                count_tag = tag_counts[key[0]]
-                B[i, j] = (count + alpha) / (count_tag + (num_words * alpha))
-
-        return B
-
-    @staticmethod
-    def initialize(states, tag_counts, A, B, corpus, vocab):
-        '''
-        Initializes the Viterbi matrices for dynamic programming.
-
-        Input: 
-            states: list of all POS tags
-            tag_counts: dict mapping tag -> count
-            A: transition matrix
-            B: emission matrix
-            corpus: list of words
-            vocab: dict mapping word -> index
-        Output:
-            best_probs: matrix of log probabilities
-            best_paths: matrix of backpointers
-        '''
-        num_tags = len(tag_counts)
-        best_probs = np.zeros((num_tags, len(corpus)))
-        best_paths = np.zeros((num_tags, len(corpus)), dtype=int)
-        s_idx = states.index("--s--")
-
-        for i in range(num_tags):
-            best_probs[i, 0] = math.log(A[s_idx, i]) + math.log(B[i, vocab[corpus[0]]])
-
-        return best_probs, best_paths
-
-    @staticmethod
-    def viterbi_forward(A, B, test_corpus, best_probs, best_paths, vocab, verbose=True):
-        '''
-        Performs the forward step of the Viterbi algorithm.
-
-        Input:
-            A, B: transition and emission matrices
-            test_corpus: list of words
-            best_probs: initialized log-probability matrix
-            best_paths: initialized backpointer matrix
-            vocab: dict mapping word -> index
-            verbose: flag to print progress
-        Output:
-            best_probs: completed log-probability matrix
-            best_paths: completed backpointer matrix
-        '''
-        num_tags = best_probs.shape[0]
-
-        for i in range(1, len(test_corpus)):
-            if i % 5000 == 0 and verbose:
-                print("Words processed: {:>8}".format(i))
-
-            for j in range(num_tags):
-                best_prob_i = float("-inf")
-                best_path_i = None
-
-                for k in range(num_tags):
-                    prob = best_probs[k, i - 1] + math.log(A[k, j]) + math.log(B[j, vocab[test_corpus[i]]])
-                    if prob > best_prob_i:
-                        best_prob_i = prob
-                        best_path_i = k
-
-                best_probs[j, i] = best_prob_i
-                best_paths[j, i] = best_path_i
-
-        return best_probs, best_paths
-
-    @staticmethod
-    def viterbi_backward(best_probs, best_paths, corpus, states):
-        '''
-        Performs the backward step of the Viterbi algorithm.
-
-        Input:
-            best_probs: log-probability matrix
-            best_paths: backpointer matrix
-            corpus: list of words
-            states: list of all POS tags
-        Output:
-            pred: list of predicted POS tags
-        '''
-        m = best_paths.shape[1]
-        z = [None] * m
-        num_tags = best_probs.shape[0]
-        best_prob_for_last_word = float('-inf')
-        pred = [None] * m
-
-        for k in range(num_tags):
-            if best_probs[k, -1] > best_prob_for_last_word:
-                best_prob_for_last_word = best_probs[k, -1]
-                z[m - 1] = k
-
-        pred[m - 1] = states[z[m - 1]]
-
-        for i in range(m - 1, 0, -1):
-            pos_tag_for_word_i = z[i]
-            z[i - 1] = best_paths[pos_tag_for_word_i, i]
-            pred[i - 1] = states[z[i - 1]]
-
-        return pred
-
-    @staticmethod
-    def predict_pos(prep, y, emission_counts, vocab, states):
-        '''
-        Performs a naive prediction using the emission counts.
-
-        Input:
-            prep: list of words from the corpus
-            y: original labeled corpus as (word POS) strings
-            emission_counts: dict with (tag, word) tuples as keys
-            vocab: word to index mapping
-            states: list of all POS tags
-        Output:
-            accuracy: float indicating prediction accuracy
+            prep: a preprocessed version of 'y'. A list with the 'word' component of the tuples.
+            y: a corpus composed of a list of tuples where each tuple consists of (word, POS)
+            emission_counts: a dictionary where the keys are (tag,word) tuples and the value is the count
+            vocab: a dictionary where keys are words in vocabulary and value is an index
+            states: a sorted list of all possible tags for this assignment
+        Output: 
+            accuracy: Number of times you classified a word correctly
         '''
         num_correct = 0
-        all_words = set(emission_counts.keys())
+        all_words = set(self.emission_counts.keys())
         total = 0
-
         for word, y_tup in zip(prep, y): 
             y_tup_l = y_tup.split()
             if len(y_tup_l) == 2:
                 true_label = y_tup_l[1]
             else:
                 continue
-        
             count_final = 0
             pos_final = ''
-
-            if word in vocab:
-                for pos in states:
+            if word in self.vocab:
+                for pos in self.states:
                     key = (pos, word)
                     if key in all_words:
-                        count = emission_counts[key]
+                        count = self.emission_counts[key]
                         if count > count_final:
                             count_final = count
                             pos_final = pos
-
                 if pos_final == true_label:
                     num_correct += 1
-
-            total += 1 
-            
+            total += 1
         accuracy = num_correct / total
         return accuracy
 
+    def create_transition_matrix(self):
+        ''' 
+        Input: 
+            alpha: number used for smoothing
+            tag_counts: a dictionary mapping each tag to its respective count
+            transition_counts: a dictionary where the keys are (prev_tag, tag) and the values are the counts
+        Output:
+            A: matrix of dimension (num_tags,num_tags)
+        '''
+        all_tags = sorted(self.tag_counts.keys())
+        num_tags = len(all_tags)
+        A = np.zeros((num_tags,num_tags))
+        trans_keys = set(self.transition_counts.keys())
+        for i in range(num_tags):
+            for j in range(num_tags):
+                count = 0
+                key = (all_tags[i], all_tags[j])
+                if key in trans_keys:
+                    count = self.transition_counts[key]
+                count_prev_tag = self.tag_counts[key[0]]
+                A[i,j] = (count + self.alpha) / ( count_prev_tag + (self.alpha * num_tags))
+        self.A = A
+
+
+    def create_emission_matrix(self):
+        '''
+        Input: 
+            alpha: tuning parameter used in smoothing 
+            tag_counts: a dictionary mapping each tag to its respective count
+            emission_counts: a dictionary where the keys are (tag, word) and the values are the counts
+            vocab: a dictionary where keys are words in vocabulary and value is an index.
+                   within the function it'll be treated as a list
+        Output:
+            B: a matrix of dimension (num_tags, len(vocab))
+        '''
+        vocab_list = list(self.vocab)
+        num_tags = len(self.tag_counts)
+        all_tags = sorted(self.tag_counts.keys())
+        num_words = len(self.vocab)
+        B = np.zeros((num_tags, num_words))
+        emis_keys = set(list(self.emission_counts.keys()))
+        for i in range(num_tags):
+            for j in range(num_words):
+                count = 0 
+                key = (all_tags[i], vocab_list[j]) # tuple of form (tag,word)
+                if key in emis_keys:
+                    count = self.emission_counts[key]
+                count_tag = self.tag_counts[key[0]]
+                B[i,j] = (count + self.alpha) / (count_tag + (num_words * self.alpha))
+        self.B = B
+
+    def initialize(self, corpus):
+        '''
+        Input: 
+            states: a list of all possible parts-of-speech
+            tag_counts: a dictionary mapping each tag to its respective count
+            A: Transition Matrix of dimension (num_tags, num_tags)
+            B: Emission Matrix of dimension (num_tags, len(vocab))
+            corpus: a sequence of words whose POS is to be identified in a list 
+            vocab: a dictionary where keys are words in vocabulary and value is an index
+        Output:
+            best_probs: matrix of dimension (num_tags, len(corpus)) of floats
+            best_paths: matrix of dimension (num_tags, len(corpus)) of integers
+        '''
+        num_tags = len(self.tag_counts)
+        self.best_probs = np.zeros((num_tags, len(corpus)))
+        self.best_paths = np.zeros((num_tags, len(corpus)), dtype=int)
+        s_idx = self.states.index("--s--")
+        for i in range(num_tags):
+            self.best_probs[i,0] = math.log(self.A[s_idx, i]) + math.log(self.B[i, self.vocab[corpus[0]]])
+
+
+    def viterbi_forward(self, test_corpus, verbose=True):
+        '''
+        Input: 
+            A, B: The transition and emission matrices respectively
+            test_corpus: a list containing a preprocessed corpus
+            best_probs: an initilized matrix of dimension (num_tags, len(corpus))
+            best_paths: an initilized matrix of dimension (num_tags, len(corpus))
+            vocab: a dictionary where keys are words in vocabulary and value is an index 
+        Output: 
+            best_probs: a completed matrix of dimension (num_tags, len(corpus))
+            best_paths: a completed matrix of dimension (num_tags, len(corpus))
+        '''
+        num_tags = self.best_probs.shape[0]
+        for i in range(1, len(test_corpus)): 
+            if i % 5000 == 0 and verbose:
+                print("Words processed: {:>8}".format(i))
+            for j in range(num_tags):
+                best_prob_i = float("-inf")
+                best_path_i = None
+                for k in range(num_tags):
+                    prob = self.best_probs[k, i-1] + math.log(self.A[k,j]) + math.log(self.B[j,self.vocab[test_corpus[i]]])
+                    if prob > best_prob_i:
+                        best_prob_i = prob
+                        best_path_i = k
+                self.best_probs[j,i] = best_prob_i
+                self.best_paths[j,i] = best_path_i
+
+    def viterbi_backward(self, corpus):
+        '''
+        This function returns the best path.
+        
+        '''
+        m = self.best_paths.shape[1] 
+        z = [None] * m # DO NOT replace the "None"
+        num_tags = self.best_probs.shape[0]
+        best_prob_for_last_word = float('-inf')
+        pred = [None] * m
+        for k in range(num_tags):
+            if self.best_probs[k, -1] > best_prob_for_last_word: 
+                best_prob_for_last_word = self.best_probs[k, -1]
+                z[m - 1] = k
+        pred[m - 1] = self.states[z[m - 1]]
+        for i in range(m-1, 0, -1):
+            pos_tag_for_word_i = z[i]
+            z[i - 1] = self.best_paths[pos_tag_for_word_i, i]
+            pred[i - 1] = self.states[z[i - 1]]
+        return pred
+    
     @staticmethod
     def compute_accuracy(pred, y):
         '''
