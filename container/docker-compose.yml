@@ -1,0 +1,12 @@
+version: '3.9'
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: container/Dockerfile_back
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../back:/app/back
+      - ../model:/app/model
+    working_dir: /app
