@@ -3,7 +3,7 @@ import string
 import numpy as np
 import math
 from collections import defaultdict
-from utils import load_data, assign_unk_english, get_word_tag
+from model.utils import get_word_tag
 
 class ViterbiTagger:
     '''

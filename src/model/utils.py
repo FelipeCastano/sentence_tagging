@@ -105,6 +105,22 @@ def assign_unk_english(tok):
 
     return "--unk--"
 
+def get_word_tag(line, vocab, english): 
+    if not line.split():
+        word = "--n--"
+        tag = "--s--"
+        return word, tag
+    else:
+        word, tag = line.split()
+        if word not in vocab: 
+            # Handle unknown words
+            if(english):
+                word = assign_unk_english(word)
+            else:
+                word = assign_unk_espanish(word)
+        return word, tag
+    return None 
+
 def load_data(path, is_corpus):
     '''
     Loads data from a given file.
@@ -126,23 +142,7 @@ def load_data(path, is_corpus):
         else:
             file = [line for line in f.readlines()]
             return file
-
-def get_word_tag(line, vocab, english): 
-    if not line.split():
-        word = "--n--"
-        tag = "--s--"
-        return word, tag
-    else:
-        word, tag = line.split()
-        if word not in vocab: 
-            # Handle unknown words
-            if(english):
-                word = assign_unk_english(word)
-            else:
-                word = assign_unk_espanish(word)
-        return word, tag
-    return None 
-
+    
 def conllu_to_dataframe(filepath):
     """
     Parses a CoNLL-U file and returns a pandas DataFrame with columns:
@@ -174,6 +174,12 @@ def conllu_to_dataframe(filepath):
             sentence_id += 1
     return pd.DataFrame(data)
 
+def load_data_english(train_path, test_path, corpus_path):
+    training_corpus = load_data(train_path, False)
+    y = load_data(test_path, False)
+    vocab = load_data(corpus_path, True)
+    return training_corpus, y, vocab
+    
 def load_conllu_data(train_file, test_file):
     # Loading training and test data
     df_train = conllu_to_dataframe(train_file)
