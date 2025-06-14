@@ -7,8 +7,7 @@ WORKDIR /app
 COPY back_requirements.txt requirements.txt
 
 RUN pip install --no-cache-dir -r requirements.txt
-
-RUN pip install fastapi uvicorn
+RUN python -m nltk.downloader punkt stopwords averaged_perceptron_tagger
 
 EXPOSE 8000
 
