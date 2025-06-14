@@ -62,7 +62,7 @@ To tag a sentence, send a POST request to `/tag` with your input:
 
 ```json
 {
-    "text": text_input, 
+    "text": "text_input", 
     "lang": int #1 for english, 2 for spanish
 }
 ```
