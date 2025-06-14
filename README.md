@@ -67,6 +67,7 @@ To tag a sentence, send a POST request to `/tag` with your input:
 
 ## Example API response
 
+```json
 {
   "tokens": ["This", "is", "a", "test"],
   "tags": ["DET", "AUX", "DET", "NOUN"]
