@@ -76,11 +76,9 @@ def get_tag(request: TagRequest):
     tagger.initialize(prep)
     tagger.viterbi_forward(prep)
     pred = tagger.viterbi_backward(prep)
-    print(prep, pred)
-    ex = {
-      "tokens": ["This", "is", "a", "test"],
-      "tags": ["DET", "AUX", "DET", "NOUN"]
+    result = {
+      "tokens": prep,
+      "tags": pred
     }
-    #result = tag_text(request.text, request.lang)
-    return ex
+    return result
 
