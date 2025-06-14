@@ -42,7 +42,7 @@ docker compose -f container/docker-compose.yml build
 docker compose -f container/docker-compose.yml up api
 
 # Alternatively, start all services in detached mode
-docker compose -f container/docker-compose.yml up -d
+docker compose -f container/docker-compose.yml up -d```
 
 ### Access the API
 
@@ -63,7 +63,7 @@ To tag a sentence, send a POST request to `/tag` with your input:
 {
     "text": text_input, 
     "lang": int #1 for english, 2 for spanish
-}
+}```
 
 ## Example API response
 
@@ -71,4 +71,4 @@ To tag a sentence, send a POST request to `/tag` with your input:
 {
   "tokens": ["This", "is", "a", "test"],
   "tags": ["DET", "AUX", "DET", "NOUN"]
-}
+}```
