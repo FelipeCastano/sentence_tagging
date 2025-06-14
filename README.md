@@ -2,7 +2,7 @@
 
 This project showcases a simple deployment of a Part-of-Speech (POS) tagging model using the Viterbi algorithm, developed during an online course on Coursera. The primary goal is to demonstrate the use of deployment tools and practices including containerization with Docker, service orchestration with Docker Compose, and API development with FastAPI.
 
-## 🔍 Overview
+## Overview
 
 - **Model:** Viterbi algorithm for POS tagging
 - **Languages Supported:** English and Spanish (custom extension)
@@ -13,7 +13,7 @@ This project showcases a simple deployment of a Part-of-Speech (POS) tagging mod
 
 The API provides a simple interface for tagging sentences with their corresponding parts of speech using a probabilistic Viterbi-based model. A custom extension has been added to support tagging for **Spanish** text as well.
 
-## 🚀 Features
+## Features
 
 - Fully containerized for easy setup and deployment
 - FastAPI-powered RESTful API
@@ -21,7 +21,7 @@ The API provides a simple interface for tagging sentences with their correspondi
 - Supports English and Spanish POS tagging
 - Ideal for demonstration purposes
 
-## 📦 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -30,7 +30,7 @@ Make sure you have Docker and Docker Compose installed:
 - [Install Docker](https://docs.docker.com/get-docker/)
 - [Install Docker Compose](https://docs.docker.com/compose/install/)
 
-### 🔧 Build and Run the Project
+### Build and Run the Project
 
 To build and start the services locally, run the following commands:
 
@@ -55,7 +55,7 @@ A simple user interface is available via Streamlit:
 
 - Frontend URL: [http://localhost:8501]
 
-## 📥 Example API Request
+## Example API Request
 
 To tag a sentence, send a POST request to `/tag` with your input:
 
@@ -65,7 +65,7 @@ To tag a sentence, send a POST request to `/tag` with your input:
     "lang": int #1 for english, 2 for spanish
 }
 
-## 📥 Example API answer
+## Example API response
 
 {
   "tokens": ["This", "is", "a", "test"],
